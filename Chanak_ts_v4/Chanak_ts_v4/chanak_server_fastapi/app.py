@@ -14,10 +14,10 @@ from typing import Optional
 import secrets
 from pathlib import Path
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:admin@localhost:5432/chanak")
+DATABASE_URL = os.getenv("DATABASE_URL", "")
 JWT_SECRET = os.getenv("JWT_SECRET", "change-this-secret-key-please")
 JWT_ALGORITHM = "HS256"
-FRONTEND_DIR = Path(r"D:\Chanak\Chanak_ts_v4\Chanak_ts_v4\chanak_server_fastapi\templates")
+FRONTEND_DIR = Path(__file__).resolve().parent / "templates"
 CLAIM_TIMEOUT_MINUTES = 10
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 app = FastAPI(title="Chanak Toy Management API")

@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Chanak Setup</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    :root {
+      --primary: #7C3AED;
+      --primary-dark: #6D28D9;
+      --accent: #EC4899;
+      --bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --green: #10B981;
+      --gray: #9CA3AF;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      max-width: 420px;
+      margin: 0 auto;
+      padding: 20px;
+      background: var(--bg);
+      min-height: 100vh;
+    }
+    h1 {
+      color: white;
+      text-align: center;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      margin-bottom: 10px;
+    }
+    .card {
+      background: white;
+      border: none;
+      padding: 24px;
+      border-radius: 16px;
+      margin: 20px 0;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+    }
+    h2 {
+      color: var(--primary);
+      margin-top: 0;
+      font-size: 22px;
+    }
+    input {
+      width: 100%;
+      padding: 14px;
+      margin: 10px 0;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      font-size: 16px;
+      transition: all 0.2s;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      margin: 10px 0;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.2s;
+    }
+    button:active { transform: scale(0.98); }
+    button:hover { box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4); }
+    button:disabled {
+      background: #9CA3AF;
+      cursor: not-allowed;
+      transform: none;
+    }
+    button:disabled:hover { box-shadow: none; }
+    button.secondary {
+      background: #f3f4f6;
+      color: #374151;
+    }
+    button.secondary:hover {
+      background: #e5e7eb;
+      box-shadow: none;
+    }
+    .hidden { display: none; }
+    .error {
+      color: #EF4444;
+      font-size: 14px;
+      background: #FEE2E2;
+      padding: 10px;
+      border-radius: 8px;
+      margin: 10px 0;
+    }
+    .step {
+      background: linear-gradient(135deg, #F3E8FF 0%, #FCE7F3 100%);
+      padding: 14px;
+      border-radius: 12px;
+      margin: 12px 0;
+      font-size: 14px;
+      border-left: 4px solid var(--primary);
+    }
+    code {
+      background: #F3E8FF;
+      color: var(--primary-dark);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+    .divider {
+      text-align: center;
+      margin: 20px 0;
+      color: #9CA3AF;
+      font-weight: 600;
+      position: relative;
+    }
+    .divider::before,.divider::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: 40%;
+      height: 1px;
+      background: #e5e7eb;
+    }
+    .divider::before { left: 0; }
+    .divider::after { right: 0; }
+    #reader {
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 15px 0;
+    }
+    .toy-card {
+      background: linear-gradient(135deg, #F3E8FF 0%, #FCE7F3 100%);
+      padding: 16px;
+      border-radius: 12px;
+      margin: 10px 0;
+      border-left: 4px solid var(--accent);
+      position: relative;
+    }
+    .toy-card b { color: var(--primary-dark); font-size: 16px; }
+    .toy-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .status {
+      font-size: 12px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+    }
+    .status.online { background: #D1FAE5; color: var(--green); }
+    .status.offline { background: #F3F4F6; color: var(--gray); }
+    .menu-btn {
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: var(--gray);
+      width: auto;
+      padding: 0 8px;
+      margin: 0;
+      cursor: pointer;
+    }
+    .menu {
+      position: absolute;
+      right: 16px;
+      top: 45px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      z-index: 10;
+    }
+    .menu button {
+      background: none;
+      color: #374151;
+      text-align: left;
+      padding: 12px 16px;
+      margin: 0;
+      border-radius: 0;
+      font-weight: 500;
+      font-size: 14px;
+    }
+    .menu button:hover {
+      background: #F3F4F6;
+      box-shadow: none;
+    }
+    .menu button.danger { color: #EF4444; }
+  </style>
+</head>
+<body>
+  <h1>🎮 Chanak Toy Setup</h1>
+
+  <!-- LOGIN -->
+  <div id="loginPage" class="card">
+    <h2>👋 Welcome Back</h2>
+    <input id="email" type="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+    <div id="loginErr" class="error hidden"></div>
+    <button onclick="login()">Login</button>
+    <button class="secondary" onclick="showRegister()">Create Account</button>
+  </div>
+
+  <!-- REGISTER -->
+  <div id="registerPage" class="card hidden">
+    <h2>✨ Create Account</h2>
+    <input id="regName" placeholder="Name (optional)">
+    <input id="regEmail" type="email" placeholder="Email">
+    <input id="regPassword" type="password" placeholder="Password (8+ characters)">
+    <div id="regErr" class="error hidden"></div>
+    <button onclick="register()">Register</button>
+    <button class="secondary" onclick="showLogin()">Back to Login</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashPage" class="card hidden">
+    <h2>🧸 My Toys</h2>
+    <div id="toysList"></div>
+    <button onclick="showAddToy()">➕ Add New Toy</button>
+    <button class="secondary" onclick="logout()">Logout</button>
+  </div>
+
+  <!-- ADD TOY - SCAN OR MANUAL -->
+  <div id="scanPage" class="card hidden">
+    <h2>📱 Add Your Toy</h2>
+    <div class="step">
+      <b>📷 Option 1:</b> Scan QR Code on toy
+    </div>
+    <div id="reader"></div>
+    <div class="divider">OR</div>
+    <div class="step">
+      <b>⌨️ Option 2:</b> Enter TYID manually
+    </div>
+    <input id="manualTyid" placeholder="TY-A1B2C3D4" style="text-transform: uppercase;">
+    <button onclick="claimManual()">Claim Toy</button>
+    <div id="scanErr" class="error hidden"></div>
+    <button class="secondary" onclick="cancelAdd()">Cancel</button>
+  </div>
+
+  <!-- AP CONNECT - UPDATED -->
+  <div id="apPage" class="card hidden">
+    <h2>📶 Connect to Toy</h2>
+    <div class="step">
+      <b>1️⃣</b> Open Settings → WiFi<br><br>
+      <b>2️⃣</b> Connect to: <b id="apName"></b><br>
+      Password: <code>12345678</code><br><br>
+      <b>3️⃣</b> A page will auto-open. Enter ONLY your home WiFi name + password<br><br>
+      <b>4️⃣</b> Tap Connect, then return here
+    </div>
+    <div id="apErr" class="error hidden"></div>
+    <button onclick="redirectToToy()">🚀 Open WiFi Setup</button>
+    <button class="secondary" onclick="cancelAdd()">Cancel</button>
+  </div>
+
+  <!-- WAITING PAGE - UPDATED -->
+  <div id="waitingPage" class="card hidden">
+    <h2>⏳ Connecting Toy...</h2>
+    <div class="step">
+      Toy is connecting to your WiFi.<br><br>
+      <b>1️⃣</b> Switch back to your home WiFi<br><br>
+      <b>2️⃣</b> Wait here - we'll auto-detect when it's online
+    </div>
+    <p style="text-align:center;color:#6B7280;" id="waitStatus">Checking...</p>
+    <button id="linkBtn" class="hidden" onclick="confirmClaim()">🔗 Link Toy to My Account</button>
+    <button class="secondary" onclick="showDash()">Back to Dashboard</button>
+  </div>
+
+  <!-- RENAME MODAL -->
+  <div id="renamePage" class="card hidden">
+    <h2>✏️ Rename Toy</h2>
+    <input id="newName" placeholder="New toy name">
+    <div id="renameErr" class="error hidden"></div>
+    <button onclick="doRename()">Save</button>
+    <button class="secondary" onclick="showDash()">Cancel</button>
+  </div>
+
+<script>
+const API = '/api';
+let AUTH_TOKEN = localStorage.getItem('token') || '';
+let CURRENT_TYID = '';
+let AP_SSID = '';
+let html5Qr = null;
+let selectedToy = '';
+let pollInterval = null;
+
+function showPage(id) {
+  document.querySelectorAll('.card').forEach(c => c.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.innerText = msg;
+  el.classList.remove('hidden');
+}
+
+function hideError(id) {
+  document.getElementById(id).classList.add('hidden');
+}
+
+function showLogin() { showPage('loginPage'); }
+function showRegister() { showPage('registerPage'); }
+function showDash() { 
+  if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+  loadToys(); 
+  showPage('dashPage'); 
+}
+
+async function register() {
+  const email = document.getElementById('regEmail').value;
+  const password = document.getElementById('regPassword').value;
+  const name = document.getElementById('regName').value;
+  hideError('regErr');
+  try {
+    const res = await fetch(API + '/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    alert('Account created! Please login.');
+    showLogin();
+  } catch (e) { showError('regErr', e.message); }
+}
+
+async function login() {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  hideError('loginErr');
+  try {
+    const res = await fetch(API + '/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    if (!res.ok) throw new Error('Invalid credentials');
+    const data = await res.json();
+    AUTH_TOKEN = data.token;
+    localStorage.setItem('token', AUTH_TOKEN);
+    showDash();
+  } catch (e) { showError('loginErr', e.message); }
+}
+
+function logout() {
+  localStorage.removeItem('token');
+  AUTH_TOKEN = '';
+  showLogin();
+}
+
+async function loadToys() {
+  const list = document.getElementById('toysList');
+  list.innerHTML = 'Loading...';
+  try {
+    const res = await fetch(API + '/my_toys', {
+      headers: { 'Authorization': 'Bearer ' + AUTH_TOKEN }
+    });
+    if (res.status === 401) {
+      logout();
+      return;
+    }
+    if (!res.ok) throw new Error('Failed');
+    const data = await res.json();
+    if (data.toys.length === 0) {
+      list.innerHTML = '<p style="text-align:center;color:#9CA3AF;">No toys yet. Add one! 🎉</p>';
+    } else {
+      list.innerHTML = data.toys.map(t => `
+        <div class="toy-card">
+          <div class="toy-header">
+            <div>
+              <b>🧸 ${t.friendly_name}</b><br>
+              <span style="color:#6B7280;font-size:13px;">${t.tyid}</span>
+            </div>
+            <div>
+              <span class="status ${t.online? 'online' : 'offline'}">${t.online? 'Online' : 'Offline'}</span>
+              <button class="menu-btn" onclick="toggleMenu('${t.tyid}')">⋮</button>
+            </div>
+          </div>
+          <div id="menu-${t.tyid}" class="menu hidden">
+            <button onclick="showRename('${t.tyid}', '${t.friendly_name}')">✏️ Rename</button>
+            <button onclick="resetWifi('${t.tyid}')">📶 Change WiFi</button>
+            <button class="danger" onclick="deleteToy('${t.tyid}')">🗑️ Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+  } catch { list.innerHTML = '<p class="error">Failed to load toys</p>'; }
+}
+
+function toggleMenu(tyid) {
+  document.querySelectorAll('.menu').forEach(m => m.classList.add('hidden'));
+  document.getElementById('menu-' + tyid).classList.toggle('hidden');
+}
+
+function showRename(tyid, currentName) {
+  selectedToy = tyid;
+  document.getElementById('newName').value = currentName;
+  showPage('renamePage');
+}
+
+async function doRename() {
+  const name = document.getElementById('newName').value;
+  if (!name) return showError('renameErr', 'Enter a name');
+  try {
+    const res = await fetch(API + '/toys/' + selectedToy, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + AUTH_TOKEN },
+      body: JSON.stringify({ friendly_name: name })
+    });
+    if (!res.ok) throw new Error('Failed');
+    showDash();
+  } catch { showError('renameErr', 'Failed to rename'); }
+}
+
+async function resetWifi(tyid) {
+  if (!confirm('This will disconnect the toy from WiFi. Hold the Reset button on toy for 5s to enter setup mode. Continue?')) return;
+  try {
+    const res = await fetch(API + '/toy/reset_wifi/' + tyid, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + AUTH_TOKEN }
+    });
+    if (!res.ok) throw new Error();
+    alert('Flag sent. Hold Reset button on toy for 5 seconds to enter WiFi setup mode.');
+  } catch { alert('Failed to send reset command'); }
+}
+
+async function deleteToy(tyid) {
+  if (!confirm('Delete this toy? It will go back to AP mode and can be added by anyone.')) return;
+  try {
+    const res = await fetch(API + '/toys/' + tyid, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + AUTH_TOKEN }
+    });
+    if (!res.ok) throw new Error();
+    loadToys();
+  } catch { alert('Failed to delete'); }
+}
+
+async function showAddToy() {
+  showPage('scanPage');
+  hideError('scanErr');
+  document.getElementById('manualTyid').value = '';
+  html5Qr = new Html5Qrcode("reader");
+  html5Qr.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: 250 },
+    onScanSuccess,
+    () => {}
+  ).catch(err => {
+    showError('scanErr', 'Camera failed. Use manual entry below.');
+  });
+}
+
+function cancelAdd() {
+  if (html5Qr) html5Qr.stop().catch(()=>{});
+  if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+  showDash();
+}
+
+async function onScanSuccess(decodedText) {
+  if (html5Qr) html5Qr.stop();
+  claimToy(decodedText.trim());
+}
+
+async function claimManual() {
+  const tyid = document.getElementById('manualTyid').value.trim().toUpperCase();
+  if (!tyid) {
+    showError('scanErr', 'Enter TYID');
+    return;
+  }
+  if (html5Qr) {
+    try { await html5Qr.stop(); } catch(e) { console.log('Scanner was not running'); }
+  }
+  claimToy(tyid);
+}
+
+async function claimToy(tyid) {
+  hideError('scanErr');
+  tyid = tyid.toUpperCase().trim();
+  try {
+    const res = await fetch(API + '/claim/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + AUTH_TOKEN },
+      body: JSON.stringify({ tyid })
+    });
+    const data = await res.json();
+
+    if (data.status === 'claimed') {
+      showError('scanErr', 'Toy already linked to another account');
+      return;
+    }
+    if (!res.ok) throw new Error(data.detail || 'Claim failed');
+
+    CURRENT_TYID = data.tyid.toUpperCase();
+    AP_SSID = data.ap_ssid;
+
+    document.getElementById('apName').innerText = AP_SSID;
+    showPage('apPage');
+  } catch (e) {
+    showError('scanErr', e.message);
+  }
+}
+
+function redirectToToy() {
+  hideError('apErr');
+  window.location.href = 'http://192.168.4.1/';
+  setTimeout(() => startWaitingForToy(), 2000);
+}
+
+function startWaitingForToy() {
+  showPage('waitingPage');
+  document.getElementById('waitStatus').innerText = 'Waiting for toy to come online...';
+  document.getElementById('linkBtn').classList.add('hidden');
+  
+  pollInterval = setInterval(async () => {
+    try {
+      const res = await fetch(API + '/device/status?tyid=' + CURRENT_TYID, {
+        headers: { 'Authorization': 'Bearer ' + AUTH_TOKEN }
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      
+      if (data.status === 'waiting_for_claim') {
+        document.getElementById('waitStatus').innerText = '✅ Toy is online!';
+        document.getElementById('linkBtn').classList.remove('hidden');
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+      else if (data.status === 'expired') {
+        document.getElementById('waitStatus').innerText = '❌ Setup expired. Start over.';
+        clearInterval(pollInterval);
+      }
+      else if (data.status === 'provisioned') {
+        document.getElementById('waitStatus').innerText = '✅ Toy linked!';
+        setTimeout(() => showDash(), 1500);
+        clearInterval(pollInterval);
+      }
+    } catch (e) {
+      console.log('Poll error:', e);
+    }
+  }, 2000);
+}
+
+async function confirmClaim() {
+  document.getElementById('linkBtn').disabled = true;
+  document.getElementById('linkBtn').innerText = 'Linking...';
+  try {
+    const res = await fetch(API + '/claim/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + AUTH_TOKEN },
+      body: JSON.stringify({ tyid: CURRENT_TYID })
+    });
+    if (!res.ok) throw new Error('Failed to link');
+    
+    document.getElementById('waitStatus').innerText = '✅ Linked! Finalizing...';
+    setTimeout(() => startWaitingForToy(), 1000);
+  } catch (e) {
+    document.getElementById('waitStatus').innerText = '❌ Failed: ' + e.message;
+    document.getElementById('linkBtn').disabled = false;
+    document.getElementById('linkBtn').innerText = '🔗 Link Toy to My Account';
+  }
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.menu-btn') && !e.target.closest('.menu')) {
+    document.querySelectorAll('.menu').forEach(m => m.classList.add('hidden'));
+  }
+});
+
+if (AUTH_TOKEN) showDash(); else showLogin();
+</script>
+</body>
+</html>

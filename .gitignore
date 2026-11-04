@@ -1,0 +1,7 @@
+*.wav
+Chanak_ts_v4/Chanak_ts_v4/chanak_server_fastapi/responses/
+.env
+uploads/
+tts_cache/
+__pycache__/
+*.pyc

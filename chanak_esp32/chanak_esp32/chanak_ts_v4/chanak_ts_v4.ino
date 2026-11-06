@@ -12,8 +12,8 @@
 //const char* fastapiBase = "https://chanak-api-xxx.ondigitalocean.app"; // app.py:8000
 
 
-const char* serverURL = "https://built-sierra-thanks-thy.trycloudflare.com/api/upload_audio"; // main.py:8080
-const char* fastapiBase = "https://bottle-viking-minneapolis-medicine.trycloudflare.com"; // app.py:8000
+const char* serverURL = "https://armed-attempt-syndrome-intranet.trycloudflare.com/api/upload_audio"; // main.py:8080
+const char* fastapiBase = "https://positions-friendship-competition-lil.trycloudflare.com"; // app.py:8000
 
 // I2S Microphone INMP441
 #define I2S_SCK 4
@@ -40,6 +40,7 @@ const char* fastapiBase = "https://bottle-viking-minneapolis-medicine.trycloudfl
 #define SILENCE_DURATION_MS 1500
 #define MIN_RECORD_MS 1500
 #define MAX_AUDIO_SIZE 1500000
+#define PCM_READ_IDLE_TIMEOUT_MS 60000
 
 #define AP_PASS "12345678"
 #define FW_VERSION "chanak_v4.2"
@@ -316,13 +317,19 @@ void uploadAndPlay(size_t audioSize) {
     http.end(); delete client; return;
   }
   if (httpCode!= 200) {
-    Serial.printf("STT HTTP failed: %d\n", httpCode);
+    String errorBody = http.getString();
+    Serial.printf("Upload/LLM HTTP failed: %d\n", httpCode);
+    if (errorBody.length() > 0) {
+      Serial.println("Server response: " + errorBody);
+    }
     http.end(); delete client; return;
   }
   int contentLen = http.getSize();
-  if (contentLen <= 0 || contentLen > MAX_AUDIO_SIZE) {
+  if (contentLen <= 0 || contentLen > MAX_AUDIO_SIZE || contentLen % 2 != 0) {
+    Serial.printf("Invalid PCM response length: %d bytes\n", contentLen);
     http.end(); delete client; return;
   }
+  Serial.printf("LLM response OK: %d bytes of PCM\n", contentLen);
   digitalWrite(LED_PIN, HIGH);
   i2s_set_clk(I2S_PORT_OUT, 16000, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
   i2s_zero_dma_buffer(I2S_PORT_OUT);
@@ -330,14 +337,38 @@ void uploadAndPlay(size_t audioSize) {
   WiFiClient * stream = http.getStreamPtr();
   uint8_t* buf = (uint8_t*)heap_caps_malloc(4096, MALLOC_CAP_SPIRAM);
   if (!buf) {
+    Serial.println("Failed to allocate PCM playback buffer");
     digitalWrite(LED_PIN, LOW);
     http.end(); delete client; return;
   }
   size_t totalReceived = 0;
   size_t totalWritten = 0;
-  while (stream->connected() || stream->available()) {
-    int len = stream->readBytes((char*)buf, 4096);
-    if (len <= 0) break;
+  unsigned long lastDataAt = millis();
+  bool playbackFailed = false;
+  while (totalReceived < (size_t)contentLen) {
+    int availableBytes = stream->available();
+    if (availableBytes <= 0) {
+      if (!http.connected()) {
+        Serial.printf("PCM connection closed at %u of %d bytes\n", totalReceived, contentLen);
+        break;
+      }
+      if (millis() - lastDataAt >= PCM_READ_IDLE_TIMEOUT_MS) {
+        Serial.printf("PCM download timed out at %u of %d bytes\n", totalReceived, contentLen);
+        break;
+      }
+      delay(2);
+      continue;
+    }
+
+    size_t bytesToRead = (size_t)availableBytes;
+    size_t remaining = (size_t)contentLen - totalReceived;
+    if (bytesToRead > remaining) bytesToRead = remaining;
+    if (bytesToRead > 4096) bytesToRead = 4096;
+    int len = stream->readBytes((char*)buf, bytesToRead);
+    if (len <= 0) {
+      continue;
+    }
+    lastDataAt = millis();
 
     size_t offset = 0;
     while (offset < (size_t)len) {
@@ -352,6 +383,7 @@ void uploadAndPlay(size_t audioSize) {
 
       if (err != ESP_OK || written == 0) {
         Serial.printf("I2S write failed: err=%d, wrote=%u\n", err, written);
+        playbackFailed = true;
         break;
       }
 
@@ -360,8 +392,11 @@ void uploadAndPlay(size_t audioSize) {
     }
 
     totalReceived += len;
+    if (playbackFailed) break;
   }
   digitalWrite(LED_PIN, LOW);
+  Serial.printf("PCM playback finished: received %u/%d, wrote %u bytes\n",
+                totalReceived, contentLen, totalWritten);
   heap_caps_free(buf);
   http.end(); delete client;
 }

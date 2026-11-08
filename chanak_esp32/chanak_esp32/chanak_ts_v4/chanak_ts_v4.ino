@@ -1,5 +1,6 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <HTTPUpdate.h>
 #include <WiFiClientSecure.h>
 #include <Preferences.h>
 #include <ArduinoJson.h>
@@ -12,8 +13,8 @@
 //const char* fastapiBase = "https://chanak-api-xxx.ondigitalocean.app"; // app.py:8000
 
 
-const char* serverURL = "https://armed-attempt-syndrome-intranet.trycloudflare.com/api/upload_audio"; // main.py:8080
-const char* fastapiBase = "https://positions-friendship-competition-lil.trycloudflare.com"; // app.py:8000
+const char* serverURL = "https://isle-toronto-necessary-exercises.trycloudflare.com/api/upload_audio"; // main.py:8080
+const char* fastapiBase = "https://kirk-rio-gene-fur.trycloudflare.com"; // app.py:8000
 
 // I2S Microphone INMP441
 #define I2S_SCK 4
@@ -54,12 +55,112 @@ String tyid = "";
 bool apMode = true;
 bool provisioned = false;
 bool wifiConnected = false;
+bool otaChecked = false;
 unsigned long wifiConnectStart = 0;
 unsigned long lastHeartbeat = 0;
 const unsigned long heartbeatInterval = 30000;
 unsigned long wifiResetTime = 0;
 unsigned long lastClaimAttempt = 0;
 int claimRetryCount = 0;
+
+int compareFirmwareVersions(const char* candidate, const char* current) {
+  const char* candidatePart = strrchr(candidate, 'v');
+  const char* currentPart = strrchr(current, 'v');
+  candidatePart = candidatePart ? candidatePart + 1 : candidate;
+  currentPart = currentPart ? currentPart + 1 : current;
+
+  while (*candidatePart || *currentPart) {
+    char* candidateEnd;
+    char* currentEnd;
+    unsigned long candidateNumber = 0;
+    unsigned long currentNumber = 0;
+
+    if (*candidatePart) {
+      candidateNumber = strtoul(candidatePart, &candidateEnd, 10);
+      if (candidateEnd == candidatePart ||
+          (*candidateEnd && *candidateEnd != '.') ||
+          (*candidateEnd == '.' && !candidateEnd[1])) return 0;
+      candidatePart = *candidateEnd == '.' ? candidateEnd + 1 : candidateEnd;
+    }
+    if (*currentPart) {
+      currentNumber = strtoul(currentPart, &currentEnd, 10);
+      if (currentEnd == currentPart ||
+          (*currentEnd && *currentEnd != '.') ||
+          (*currentEnd == '.' && !currentEnd[1])) return 0;
+      currentPart = *currentEnd == '.' ? currentEnd + 1 : currentEnd;
+    }
+
+    if (candidateNumber > currentNumber) return 1;
+    if (candidateNumber < currentNumber) return -1;
+  }
+  return 0;
+}
+
+void checkForFirmwareUpdate() {
+  if (otaChecked || WiFi.status() != WL_CONNECTED) return;
+  otaChecked = true;
+
+  WiFiClientSecure manifestClient;
+  manifestClient.setInsecure();
+  HTTPClient http;
+  http.setTimeout(15000);
+  String manifestUrl = String(fastapiBase) + "/api/firmware";
+  if (!http.begin(manifestClient, manifestUrl)) {
+    Serial.println("OTA manifest connection could not be started");
+    return;
+  }
+
+  int code = http.GET();
+  if (code != HTTP_CODE_OK) {
+    Serial.printf("OTA manifest request failed: HTTP %d\n", code);
+    http.end();
+    return;
+  }
+
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, http.getString());
+  http.end();
+  if (error) {
+    Serial.printf("OTA manifest JSON error: %s\n", error.c_str());
+    return;
+  }
+
+  const char* latestVersion = doc["version"];
+  const char* firmwarePath = doc["url"];
+  if (!latestVersion || !firmwarePath || !firmwarePath[0]) {
+    Serial.println("OTA manifest is missing version or URL");
+    return;
+  }
+  int versionComparison = compareFirmwareVersions(latestVersion, FW_VERSION);
+  if (versionComparison <= 0) {
+    Serial.printf("No newer firmware available (current %s, latest %s)\n",
+                  FW_VERSION, latestVersion);
+    return;
+  }
+
+  String firmwareUrl = firmwarePath;
+  if (firmwareUrl.startsWith("/")) {
+    firmwareUrl = String(fastapiBase) + firmwareUrl;
+  } else if (!firmwareUrl.startsWith("https://")) {
+    Serial.println("OTA firmware URL must use HTTPS");
+    return;
+  }
+
+  Serial.printf("Updating firmware %s -> %s\n", FW_VERSION, latestVersion);
+  WiFiClientSecure updateClient;
+  updateClient.setInsecure();
+  HTTPUpdate updater(30000);
+  t_httpUpdate_return result = updater.update(updateClient, firmwareUrl, FW_VERSION);
+  if (result == HTTP_UPDATE_FAILED) {
+    Serial.printf("OTA update failed (%d): %s\n",
+                  updater.getLastError(),
+                  updater.getLastErrorString().c_str());
+  } else if (result == HTTP_UPDATE_NO_UPDATES) {
+    Serial.println("OTA server reported no update");
+  } else if (result == HTTP_UPDATE_OK) {
+    Serial.println("OTA update installed; restarting");
+  }
+}
 
 void setupI2S() {
   i2s_config_t i2s_in_config = {
@@ -460,6 +561,7 @@ void setup() {
     if (WiFi.waitForConnectResult() == WL_CONNECTED) {
       wifiConnected = true;
       Serial.println("WiFi connected: " + WiFi.localIP().toString());
+      checkForFirmwareUpdate();
       if (token!= "" && isProvisioned) {
         provisioned = true;
         Serial.println("Token found. Starting LLM mode.");
@@ -486,6 +588,7 @@ void loop() {
   if (!wifiConnected && WiFi.status() == WL_CONNECTED) {
     wifiConnected = true;
     Serial.println("WiFi connected: " + WiFi.localIP().toString());
+    checkForFirmwareUpdate();
   }
   if (!wifiConnected && wifiConnectStart > 0 && millis() - wifiConnectStart > 30000) {
     Serial.println("WiFi failed. Restarting AP");

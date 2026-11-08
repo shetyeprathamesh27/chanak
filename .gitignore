@@ -5,3 +5,5 @@ uploads/
 tts_cache/
 __pycache__/
 *.pyc
+Chanak_ts_v4/Chanak_ts_v4/chanak_server_fastapi/firmware/
+chanak_esp32/chanak_esp32/chanak_ts_v4/build/

@@ -20,6 +20,13 @@ JWT_ALGORITHM = "HS256"
 FRONTEND_DIR = Path(__file__).resolve().parent / "templates"
 CLAIM_TIMEOUT_MINUTES = 10
 ACCESS_TOKEN_EXPIRE_DAYS = 30
+OTA_FIRMWARE_VERSION = os.getenv("OTA_FIRMWARE_VERSION", "chanak_v5.3").strip()
+OTA_FIRMWARE_PATH = Path(
+    os.getenv(
+        "OTA_FIRMWARE_PATH",
+        str(Path(__file__).resolve().parent / "firmware" / "chanak_ts_v4.ino.bin"),
+    )
+).expanduser()
 app = FastAPI(title="Chanak Toy Management API")
 api = APIRouter(prefix="/api")
 security = HTTPBearer()
@@ -433,6 +440,30 @@ def reset_wifi(tyid: str, current_user: dict = Depends(get_current_user), conn =
     conn.commit()
     cur.close()
     return {"status": "flag_set"}
+
+def get_ota_firmware_path() -> Path:
+    if not OTA_FIRMWARE_VERSION:
+        raise HTTPException(status_code=503, detail="OTA firmware version is not configured")
+    if not OTA_FIRMWARE_PATH.is_file():
+        raise HTTPException(status_code=503, detail="OTA firmware file is not available")
+    return OTA_FIRMWARE_PATH
+
+@api.get("/firmware")
+def firmware_manifest():
+    get_ota_firmware_path()
+    return {
+        "version": OTA_FIRMWARE_VERSION,
+        "url": "/api/firmware/download",
+    }
+
+@api.get("/firmware/download")
+def download_firmware():
+    firmware_path = get_ota_firmware_path()
+    return FileResponse(
+        firmware_path,
+        media_type="application/octet-stream",
+        filename=firmware_path.name,
+    )
 
 app.include_router(api)
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
